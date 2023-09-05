@@ -8,6 +8,7 @@ uses
 
 begin
   Application.Initialize;
+  Application.Title := 'Sealtalker';
   Application.CreateForm(TSeatalkerForm, SeatalkerForm);
   Application.Run;
 end.
