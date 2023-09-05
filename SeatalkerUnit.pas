@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls,Buttons,genunit,odslogger, ExtCtrls,  CPort,CPortCtl;
+  Dialogs, StdCtrls,Buttons,genunit,{odslogger,} ExtCtrls,  CPort,CPortCtl;
 
 type
   TSeatalkerForm = class(TForm)
@@ -134,7 +134,7 @@ var
 begin
      if errors=[ceRxParity] then
         begin
-             odslogmessage('Command bit recd');
+             //odslogmessage('Command bit recd');
              sleep(20); //want to wait a little so that the buffer can fill the full datagram
              //longest datagram is D ie 13+3 bytes
              //at 4800 baud that would be 3.3ms but 20 seems to do the trick
@@ -143,12 +143,12 @@ begin
              if count>0 then
                 begin
                      seatalk.Read(ba,count);
-                     odslogmessage('input count',count);
+                     //odslogmessage('input count',count);
                      s:='';
                      for i:=1 to count do
                          begin
                               //seatalk.Read(b,1);
-                              odslogmessage('byte '+inttohex(ba[i],2));
+                              //odslogmessage('byte '+inttohex(ba[i],2));
                               s:=s+inttohex(ba[i],2)+' ';
                          end;
                      //need to check to see if two messages have arrived at once
@@ -162,11 +162,11 @@ var
    i:integer;
    b:byte;
 begin
-     odslogmessage('Waiting',count);
+//     odslogmessage('Waiting',count);
      for i:=1 to count do
          begin
               seatalk.Read(b,1);
-              odslogmessage('byte '+inttohex(b,2));
+//              odslogmessage('byte '+inttohex(b,2));
          end;
 end;
 
