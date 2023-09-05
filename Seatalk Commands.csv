@@ -1,0 +1,61 @@
+00,Depth
+05,Engine
+10,Wind Angle Apparent
+11,Wind Speed Apparent
+20,Log Speed #1
+21,Log Trip
+22,Log Total
+23,Water Temp #1
+24,Log Units
+25,Log Trip and Total
+26,Log Speed #2
+27,Water Temp #2
+30,Lamp #1
+36,MOB Cancel
+38,Codelock
+50,Position Lat
+51,Position Long
+52,SOG
+53,Heading COG
+54,Time
+55,Key GPS
+56,Date
+57,GPS sat info
+58,Position
+59,Timer set
+61,Initialisation E80
+65,Depth units Fathom
+66,Alarm Wind
+68,Alarm Ack
+70,KEY ST60 Maxiview Remote
+80,Lamp #2
+81,Config Course Computer #1
+81,Config Course Computer #1
+82,Waypoint Name
+83,Course computer failure
+84,Heading Compass AP #1
+85,Navigation
+86,Key
+87,Config Set response level
+88,Config autopilot #1
+89,Heading Compass
+90,ID #2
+91,Rudder gain
+92,Config autopilot #2
+93,Config autopilot enter
+95,Heading Compass AP #2
+99,Heading var
+01,ID Power on
+6C,ID #1
+6E,MOB
+9A,Version
+9C,Heading Compass and Rudder
+9E,Waypoint Definition
+A1,Waypoint name
+A2,Waypoint Arrival
+A3,Rudder
+A4,ID discover devices
+A5,GPS info #1
+A7,GPS unk
+A8,Alarm
+AC,Waypoint XTE
