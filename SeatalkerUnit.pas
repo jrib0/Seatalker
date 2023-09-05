@@ -9,7 +9,7 @@ uses
 type
   TSeatalkerForm = class(TForm)
     OpenPortButton: TButton;
-    SendButton: TButton;
+    SendButton: TButton;                       
     Minus1: TButton;
     Plus1: TButton;
     Minues10: TButton;
@@ -72,25 +72,35 @@ var
    s,s1:string;
    b:byte;
 begin
+     seatalk.Events:=[]; //turn off the event for command bit received
+     remainderlength:=0; //clear internal buffer of left over bytes not yet processed
+     remainder:='';
      //check to see if anything is waiting if it is process it first
-     s:=stringreplace(datagram,',',' ',[rfReplaceAll]);
+     while seatalk.inputcount<>0 do
+        begin
+             seatalk.clearbuffer(true,false);
+             sleep(11);  //wait a little time to allow bus to settle
+        end;
+     s:=stringreplace(datagram,',',' ',[rfReplaceAll]); //incase we have commas rather than spaces between bytes
      splitstring(' ',s+' ',s,s1);
      //send with command bit set
      seatalk.Parity.bits:=prmark;
      b:=hextoint(s);
      seatalk.write(b,1);
-     sleep(20);
+     sleep(20);//need a little pause
      //send anything else without command bit set
      seatalk.Parity.bits:=prspace;
      repeat
            splitstring(' ',s1,s,s1);
            b:=hextoint(s);
            seatalk.write(b,1);
-           sleep(10);
+           sleep(10); //another little pause
      until pos(' ',s1)=0;
      sleep(50);
      //clearing the input buffer means we dont get our own command back
      seatalk.clearbuffer(true,false);
+     //turn event back on
+     seatalk.Events:=[everror];
 end;
 
 procedure Tseatalkerform.decodedatagramtext(Datagram:string);
@@ -158,43 +168,43 @@ begin
              sleep(15); //want to wait a little so that the buffer can fill the full datagram
              //longest datagram is D ie 13+3 bytes
              //at 4800 baud that would be 3.3ms but 20 seems to do the trick
-             repeat
+             repeat //wait until we have at least 3 bytes (smallest command)
                    recd:=seatalk.inputcount;
                    if recd<2 then sleep(5);
              until recd>2;
              seatalk.Read(ba,recd);
-             s:=remainder;
-             for i:=1 to recd do
+             s:=remainder; //push remainder into s
+             for i:=1 to recd do //turn to string
                  s:=s+inttohex(ba[i],2)+' ';
-             recd:=recd+remainderlength;
-             completedcommand:=false;
+             recd:=recd+remainderlength; //add reaminder length
+             completedcommand:=false; //to indicate when we have done all we can
              repeat
-                   command:=hextoint(copy(s,1,2));
-                   len:=hextoint(copy(s,4,2))AND $F+3;
+                   len:=hextoint(copy(s,4,2))AND $F+3;//extract length of command from attribute byte
                    if len<recd then
                       begin
-                           s1:=leftstr(s,len*3);
+                           s1:=leftstr(s,len*3); //pull the first command
                            s:=rightstr(s,length(s)-len*3);
-                           decodedatagramtext(s1);
-                           Datagrams.Items.Add(s1);
+                           decodedatagramtext(s1); //decode
+                           Datagrams.Items.Add(s1);//display raw datagram
                            recd:=recd-len;
                       end;
-                   if len=recd then
+                   if len=recd then //we have whole datagram so clear everything and exit this loop
                       begin
-                           decodedatagramtext(s);
-                           Datagrams.items.add(s);
+                           decodedatagramtext(s); //decode
+                           Datagrams.items.add(s);//display datagram
                            completedcommand:=true;
                            remainder:='';
                            remainderlength:=0;
                       end;
                    if len>recd then
                       begin
-                           remainder:=s;
+                           remainder:=s; //we only have a remainder
                            remainderlength:=recd;
                            completedcommand:=true;
                       end;
              until completedcommand;
 
+             //tidy up the listboxes
              while datagrams.Items.Count>100 do datagrams.items.delete(0);
              if datagrams.Items.count>0 then datagrams.selected[Datagrams.items.count-1]:=true;
              while decoded.Items.Count>100 do decoded.items.delete(0);
