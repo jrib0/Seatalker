@@ -1,5 +1,5 @@
-00,Depth
-05,Engine
+0,Depth
+5,Engine
 10,Wind Angle Apparent
 11,Wind Speed Apparent
 20,Log Speed #1
@@ -45,7 +45,7 @@
 93,Config autopilot enter
 95,Heading Compass AP #2
 99,Heading var
-01,ID Power on
+1,ID Power on
 6C,ID #1
 6E,MOB
 9A,Version
@@ -57,5 +57,6 @@ A3,Rudder
 A4,ID discover devices
 A5,GPS info #1
 A7,GPS unk
-A8,Alarm
+A8,Alarm #1
+AB,Alarm #2
 AC,Waypoint XTE

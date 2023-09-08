@@ -13,8 +13,15 @@ ST
 1  Stop bit (+12V)
 
 SO set parity to MARK for first byte
-then SPACE for subsequent bytes}
+then SPACE for subsequent bytes
 
+character frame
+Date
+56 81 04 05
+
+Lights
+30 00 0C
+30 00 00}
 
 interface
 
@@ -39,7 +46,6 @@ type
     LampOffButton: TButton;
     SeaTalk: TComPort;
     ComComboBox1: TComComboBox;
-    STCommands: TListBox;
     ComLed1: TComLed;
     ComLed2: TComLed;
     MainMenu1: TMainMenu;
@@ -159,71 +165,6 @@ begin
      Senddatagram(seatalk,'30 00 00');
 end;
 
-procedure TSeatalkerForm.SeaTalkError(Sender: TObject;  Errors: TComErrors);
-var
-   i,recd:integer;
-   ba:array[1..2049] of byte; //bigger than the input buffer
-   s,s1:string;
-   len:byte;
-   completedcommand:boolean;
-begin
-     recd:=0;
-     if errors=[ceRxParity] then
-        begin
-             if not playtimer.enabled then
-                begin
-                     sleep(6); //want to wait a little so that the buffer can fill the full datagram
-                     //longest datagram is D ie 13+3 bytes
-                     //at 4800 baud that would be 3.3ms but 20 seems to do the trick
-                     repeat //wait until we have at least 3 bytes (smallest command)
-                            recd:=seatalk.inputcount;
-                            if recd<2 then sleep(5);
-                     until recd>2;
-                     seatalk.Read(ba,recd);
-                end; //if playback then we shall find the data in remainder
-             s:=remainder; //push remainder into s
-             for i:=1 to recd do //turn to string
-                 s:=s+inttohex(ba[i],2)+' ';
-             recd:=recd+remainderlength; //add reaminder length
-             completedcommand:=false; //to indicate when we have done all we can
-             repeat
-                   len:=hextoint(copy(s,4,2))AND $F+3;//extract length of command from attribute byte
-                   if len<recd then
-                      begin
-                           s1:=leftstr(s,len*3); //pull the first command
-                           s:=rightstr(s,length(s)-len*3);
-                           decoded.items.add(decodedatagramtext(s1)); //decode
-                           if seatalk.connected and sendsimulateddata then senddatagram(seatalk,s1);
-                           Datagrams.Items.Add(s1);//display datagram
-                           //add line here to send as $STALK
-                           recd:=recd-len;
-                      end;
-                   if len=recd then //we have whole datagram so clear everything and exit this loop
-                      begin
-                           decoded.items.add(decodedatagramtext(s)); //decode
-                           Datagrams.items.add(s);//display datagram
-                           if seatalk.connected and sendsimulateddata then senddatagram(seatalk,s);
-                           //add line here to send as $STALK
-                           completedcommand:=true;
-                           remainder:='';
-                           remainderlength:=0;
-                      end;
-                   if len>recd then
-                      begin
-                           remainder:=s; //we only have a remainder
-                           remainderlength:=recd;
-                           completedcommand:=true;
-                      end;
-             until completedcommand;
-
-             //tidy up the listboxes
-             while datagrams.Items.Count>100 do datagrams.items.delete(0);
-             if datagrams.Items.count>0 then datagrams.selected[Datagrams.items.count-1]:=true;
-             while decoded.Items.Count>100 do decoded.items.delete(0);
-             if decoded.items.count>0 then decoded.selected[decoded.items.count-1]:=true;
-        end;
-end;
-
 procedure TSeatalkerForm.Exit1Click(Sender: TObject);
 begin
      close;
@@ -250,6 +191,23 @@ begin
      Playtimer.enabled:=false;
 end;
 
+
+procedure TSeatalkerForm.Jump10001Click(Sender: TObject);
+begin
+     inc(playcount,1000);
+     remainder:='';
+     remainderlength:=0;
+end;
+
+procedure TSeatalkerForm.RawSeatalk1Click(Sender: TObject);
+begin
+     panel2.visible:=rawseatalk1.Checked;
+     panel1.visible:=decodedseatalk1.Checked;
+     width:=529;
+     if panel1.visible and panel2.visible then width:=858;
+     if not panel1.visible and not panel2.visible then width:=188;
+end;
+
 procedure TSeatalkerForm.PlayTimerTimer(Sender: TObject);
 var
    s:string;
@@ -258,7 +216,7 @@ begin
      if playcount>=loglistbox.items.count-1 then playcount:=0;
      s:=loglistbox.items[playcount];
      //do something here for $STALK NMEA
-     if pos('$STALK,',s)=1 then
+     if (pos('$STALK,',s)=1) or (pos('STALK,',s)=1) then
         begin
              s:=copyafter(',',s);
              s:=copybefore('*',s);
@@ -279,63 +237,82 @@ begin
      inc(playcount);
 end;
 
-procedure TSeatalkerForm.Jump10001Click(Sender: TObject);
+procedure TSeatalkerForm.SeaTalkError(Sender: TObject;  Errors: TComErrors);
+var
+   i,recd:integer;
+   ba:array[1..2049] of byte; //bigger than the input buffer
+   s,s1,datagram:string;
+   len:byte;
+   completedcommand:boolean;
 begin
-     inc(playcount,1000);
-     remainder:='';
-     remainderlength:=0;
-end;
+     recd:=0;
+     if errors=[ceRxParity] then
+        begin
+             if not playtimer.enabled then
+                begin
+                     sleep(6); //want to wait a little so that the buffer can fill the full datagram
+                     //longest datagram is D ie 13+3 bytes
+                     //at 4800 baud that would be 3.3ms but 20 seems to do the trick
+                     repeat //wait until we have at least 3 bytes (smallest command)
+                            recd:=seatalk.inputcount;
+                            if recd<2 then sleep(5);
+                     until recd>2;
+                     seatalk.Read(ba,recd);
+                end; //if playback then we shall find the data in remainder
+             s:=remainder; //push remainder into s
+             for i:=1 to recd do //turn to string
+                 s:=s+inttohex(ba[i],2)+' ';
+             recd:=recd+remainderlength; //add reaminder length
+             completedcommand:=false; //to indicate when we have done all we can
+             repeat
+                   datagram:='';
+                   len:=hextoint(copy(s,4,2))AND $F+3;//extract length of command from attribute byte
+                   if len<recd then
+                      begin
+                           s1:=leftstr(s,len*3); //pull the first command
+                           s:=rightstr(s,length(s)-len*3);
+                           datagram:=decodedatagramtext(s1);
+                           Datagrams.Items.Add(s1);//display datagram
+                           decoded.items.add(datagram); //display decoded
+                           if seatalk.connected and sendsimulateddata then senddatagram(seatalk,s1);
+                           //add line here to send as $STALK
+                           recd:=recd-len;
+                      end;
+                   if len=recd then //we have whole datagram so clear everything and exit this loop
+                      begin
+                           datagram:=decodedatagramtext(s);
+                           Datagrams.items.add(s);//display datagram
+                           decoded.items.add(datagram); //display decoded
+                           if seatalk.connected and sendsimulateddata then senddatagram(seatalk,s);
+                           //add line here to send as $STALK
+                           completedcommand:=true;
+                           remainder:='';
+                           remainderlength:=0;
+                      end;
+                   if len>recd then
+                      begin
+                           remainder:=s; //we only have a remainder
+                           remainderlength:=recd;
+                           completedcommand:=true;
+                      end;
+                   if (pos('Unknown',datagram)>0) or (pos('Error',datagram)>0) then
+                      begin
+                           //received a corrupted datagram clear buffer and reset
+                           remainder:=''; //we only have a remainder
+                           remainderlength:=0;
+                           seatalk.clearbuffer(true,false);
+                           sleep(11);  //wait a little time to allow bus to settle
+                      end;
+             until completedcommand;
 
-procedure TSeatalkerForm.RawSeatalk1Click(Sender: TObject);
-begin
-     panel2.visible:=rawseatalk1.Checked;
-     panel1.visible:=decodedseatalk1.Checked;
-     width:=529;
-     if panel1.visible and panel2.visible then width:=858;
-     if not panel1.visible and not panel2.visible then width:=188;
+             //tidy up the listboxes
+             while datagrams.Items.Count>100 do datagrams.items.delete(0);
+             if datagrams.Items.count>0 then datagrams.selected[Datagrams.items.count-1]:=true;
+             while decoded.Items.Count>100 do decoded.items.delete(0);
+             if decoded.items.count>0 then decoded.selected[decoded.items.count-1]:=true;
+        end;
 end;
 
 end.
 
-//character frame
-232
-START 0- lsb ---- MSB - PAR- STOP +
 
-ST
-1  Start bit (0V)
-8  Data Bits (least significant bit transmitted first)
-1  Command bit, set on the first character of each datagram. Reflected in the parity bit of most UARTs. Not compatible with NMEA0183 but well suited for the multiprocessor communications mode of 8051-family microcontrollers (bit SM2 in SCON set).
-1  Stop bit (+12V)
-
-SO set parity to MARK for first byte
-then SPACE for subsequent bytes
-
-
-Date
-56 81 04 05
-
-Lights
-30 00 0C
-30 00 00
-
-
-
-
-sleep(15); //want to wait a little so that the buffer can fill the full datagram
-             //longest datagram is D ie 13+3 bytes
-             //at 4800 baud that would be 3.3ms but 20 seems to do the trick
-             count:=seatalk.inputcount;
-             if count>0 then //do we have any bytes waiting for us?
-                begin
-                     seatalk.Read(ba,count);
-                     for i:=1 to count do
-                         s:=s+inttohex(ba[i],2)+' ';
-                     //we need to check to see if two messages have arrived at once or left overs
-                     Datagrams.items.add(s);
-
-                     //look up name of seatalk command
-                     //s:=stcommands.items.Values[inttohex(ba[1],2)]+':';
-
-
-                     while datagrams.Items.Count>100 do datagrams.items.delete(0);
-                     Datagrams.selected[Datagrams.items.count-1]:=true;

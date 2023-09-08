@@ -1,5 +1,8 @@
 unit SeatalkUnit;
 
+//(c) 2023 James Brown
+//unit to decode and send Seatalk 1 sentences
+
 interface
 
 uses
@@ -10,71 +13,73 @@ uses
   SDL_stringl;
 
   const
-       STCommands:array[0..59] of string =(
-          '00=Depth',
-          '01=ID Power on',
-          '05=Engine',
-          '10=Wind Angle Apparent',
-          '11=Wind Speed Apparent',
-          '20=Log Speed #1',
-          '21=Log Trip',
-          '22=Log Total',
-          '23=Water Temp #1',
-          '24=Log Units',
-          '25=Log Trip and Total',
-          '26=Log Speed #2',
-          '27=Water Temp #2',
-          '30=Lamp #1',
-          '36=MOB Cancel',
-          '38=Codelock',
-          '50=Position Lat',
-          '51=Position Long',
-          '52=SOG',
-          '53=Heading COG',
-          '54=Time',
-          '55=Key GPS',
-          '56=Date',
-          '57=GPS sat info',
-          '58=Position',
-          '59=Timer set',
-          '61=Initialisation E80',
-          '65=Depth units Fathom',
-          '66=Alarm Wind',
-          '68=Alarm Ack',
-          '6C=ID #1',
-          '6E=MOB',
-          '70=KEY ST60 Maxiview Remote',
-          '80=Lamp #2',
-          '81=Config Course Computer #1',
-          '82=Waypoint Name',
-          '83=Course computer failure',
-          '84=Heading Compass AP #1',
-          '85=Navigation',
-          '86=Key',
-          '87=Config Set response level',
-          '88=Config Autopilot #1',
-          '89=Heading Compass',
-          '90=ID #2',
-          '91=Rudder gain',
-          '92=Config Autopilot #2',
-          '93=Config Autopilot enter',
-          '95=Heading Compass AP #2',
-          '99=Heading Var',
-          '9A=Version',
-          '9C=Heading Compass and Rudder',
-          '9E=Waypoint Definition',
-          'A1=Waypoint name',
-          'A2=Waypoint Arrival',
-          'A3=Rudder',
-          'A4=ID discover devices',
-          'A5=GPS Info',
-          'A7=GPS unk',
-          'A8=Alarm',
-          'AC=Waypoint XTE');
+       STCommands:array[0..60] of string =(
+          '00=Depth,5',
+          '01=ID Power on,8',
+          '05=Engine,6',
+          '10=Wind Angle Apparent,10',
+          '11=Wind Speed Apparent,10',
+          '20=Log Speed #1,4',
+          '21=Log Trip,5',
+          '22=Log Total,5',
+          '23=Water Temp #1,4',
+          '24=Log Units,5',
+          '25=Log Trip and Total,7',
+          '26=Log Speed #2,7',
+          '27=Water Temp #2,4',
+          '30=Lamp #1,3',
+          '36=MOB Cancel,3',
+          '38=Codelock,4',
+          '50=Position Lat,5',
+          '51=Position Long,5',
+          '52=SOG,4',
+          '53=Heading COG,3',
+          '54=Time,4',
+          '55=Key GPS,4',
+          '56=Date,4',
+          '57=GPS sat info,3',
+          '58=Position,8',
+          '59=Timer set,5',
+          '61=Initialisation E80,6',
+          '65=Depth units Fathom,3',
+          '66=Alarm Wind,3',
+          '68=Alarm Ack,4',
+          '6C=ID #1,8',
+          '6E=MOB,10',
+          '70=KEY ST60 Maxiview Remote,3',
+          '80=Lamp #2,3',
+          '81=Config Course Computer #1-3-4',
+          '82=Waypoint Name,8',
+          '83=Course computer failure,10',
+          '84=Heading Compass AP #1-9',
+          '85=Navigation,9',
+          '86=Key,4',
+          '87=Config Set response level,3',
+          '88=Config Autopilot #1-6',
+          '89=Heading Compass,5',
+          '90=ID #2,5',
+          '91=Rudder gain,3',
+          '92=Config Autopilot #2-5',
+          '93=Config Autopilot enter,3',
+          '95=Heading Compass AP #2-9',
+          '99=Heading Var,,3',
+          '9A=Version,12',
+          '9C=Heading Compass and Rudder,4',
+          '9E=Waypoint Definition,15',
+          'A1=Waypoint name,16',
+          'A2=Waypoint Arrival,7',
+          'A3=Rudder,5',
+          'A4=ID discover devices,5-9',
+          'A5=GPS Info,4-7-10-16',
+          'A7=GPS unk,12',
+          'A8=Alarm #1,6',
+          'AB=Alarm #1,6',
+          'AC=Waypoint XTE,5');
 
 type
     tdatagram=record
-        length:byte;
+        length,
+        expectedlength:byte;
         bytes:array[0..19] of byte;
     end;
 
@@ -105,7 +110,7 @@ function STHeadingCompassandRudder(var dg:tdatagram):string;     //9C
 
 function decodedatagramtext(Datagram:string):string;
 Procedure Senddatagram(var seatalk:tcomport;datagram:string);
-function STlookupcommand(datagram:string):string;
+procedure STlookupcommand(datagram:string;var command:string;var expectedlength:byte);
 
 implementation
 
@@ -317,7 +322,6 @@ end;
 
 function STHeadingCompassandRudder(var dg:tdatagram):string;     //9C
 var
-   b:byte;
    hdg:integer;
    turn:string;
 begin
@@ -331,17 +335,21 @@ end;
 function decodedatagramtext(Datagram:string):string;
 var
    dg:tdatagram;
+   expectedlength:byte;
    count:integer;
    s:string;
 begin
      //s:=stcommands.items.Values[leftstr(datagram,2)]+' :';
-     s:=STlookupcommand(leftstr(datagram,2))+' :';
+     STlookupcommand(leftstr(datagram,2),s,expectedlength);
+     s:=s+' :';
      dg.length:=countwords(datagram);
      if dg.length>20 then dg.length:=20;
      for count:=0 to dg.length-1 do
          dg.bytes[count]:=hextoint(ExtractSubString(datagram,count,' '));
      //check we have the correct number of bytes
-     if dg.length<>dg.bytes[1] and $F+3 then s:=s+'Error incorrect number of bytes received'
+     if (dg.length<>(dg.bytes[1] and $F+3)) or //this checks what we have actually received and sees if it matches
+     // this checks if it matches what the datagram should look like (because sometimes the above check can be wrong)
+        (expectedlength>0) and (dg.length<>expectedlength) then s:=s+'Error incorrect number of bytes received'
      else
      case dg.bytes[0] of
           $00:s:=s+STDepth(dg);
@@ -444,15 +452,17 @@ begin
      seatalk.Events:=[everror];
 end;
 
-function STlookupcommand(datagram:string):string;
+procedure STlookupcommand(datagram:string;var command:string;var expectedlength:byte);
 var
    dg:string;
    count:integer;
 begin
      dg:=datagram;
+     expectedlength:=0;
      if length(dg)=1 then dg:='0'+dg;
-     result:='Unknown';
+     Command:='Unknown';
      for count:=0 to 59 do
-         if copybefore('=',stcommands[count])=dg then result:=copyafter('=',stcommands[count]);
+         if copybefore('=',stcommands[count])=dg then Command:=copyafter('=',stcommands[count]);
+     expectedlength:=strtointdef(copyafter(',',Command),0);
 end;
 end.
